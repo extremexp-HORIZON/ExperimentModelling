@@ -1,0 +1,17 @@
+[tool.poetry]
+name = "policy-based-data-augmentation"
+version = "0.1.0"
+description = ""
+authors = ["DAI <dai@i2cat.net>"]
+readme = "README.md"
+packages=[{include="src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.9, <3.12"
+pandas = "^2.1.1"
+ctgan = "^0.8.0"
+imblearn = "^0.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
