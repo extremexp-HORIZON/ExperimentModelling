@@ -1,0 +1,169 @@
+package cuni;
+
+workflow A {
+  define task d;
+  define task e;
+
+  // d and e are implicitly abstract
+  // and they are implicitly defined by the definition of the transition below
+  d -> e;
+
+  data SensorData "file://sensor-data.schema";
+  // longitude, latitude, altitude,timestamp,speed,batteryLevel,isMoving,batteryCharging,heading
+
+  data in;
+  data out;
+}
+
+workflow Z {
+  // parameters of the workflow
+  param pz;
+  param ppz;
+  param pppz;
+
+  define task zx;
+  define task zy;
+  define task aa;
+
+  // tasks + their parameters (if not implicit is enough)
+  configure task zx {
+    implementation "file://programX.exe";
+	param zxp = pz;
+  }
+
+  configure task zy {
+    implementation "file://programY.exe";
+  }
+
+  configure task aa {
+    implementation A;
+
+    configure task d {
+    }
+  }
+
+  // transitions + their paramets
+  zx -> zy;
+}
+
+workflow Z2 from Z {
+  configure task zx {
+    implementation "file://programX2.exe"; // This has to support parameter zxp
+  }
+}
+
+workflow X {
+  param px;
+  task z {
+    implementation Z;
+  }
+  z -> w;
+}
+
+
+workflow H {
+  task ...;
+}
+
+
+workflow D {
+  @extensionPoint
+  param pd = 10;
+  param pe = 11;
+
+  define task h;
+  define task x;
+  define task y;
+
+  configure task h {
+    implementation H;
+  }
+
+  configure task x { // implicit assembly
+    implementation X;
+    param px = pd;
+    configure task z { // this is a parameterization of the existing task z (not a definition of a new task)
+	  param pz = pd;
+	}
+	z -> w { // this condition has to exist in X
+	  // adjustment of a condition -- this is a bad idea
+	  // there is probably nothing to parameterize for a transition
+	}
+  }
+  configure task y {
+    implementation Y;
+  }
+  x -> y;
+}
+
+workflow E {
+  @extensionPoint
+  param pd is d.pd;
+
+  define task d;
+
+  configure task d {
+    // Things allowed in the assembly:
+    // - change parameter
+    // - change task implementation
+    // - change dataset ?
+    // - add/change annotation
+
+    @extensionPoint
+    configure task x;
+
+    implementation D;
+  }
+}
+
+assembled workflow DAss from D {
+  @extensionPoint
+  param pd
+}
+
+workflow D2 {
+	param pd = 12;
+	define task x;
+
+	configure task x {
+	  implementation XX;
+	  param px = e;
+	}
+}
+
+workflow AAss from A {
+  configure task d {
+    implementation D;
+  }
+
+  @extensionPoint
+  configure task e {
+    implementation E;
+
+	configure task d {
+	  implementation D2;
+	  param pd = 14;
+	  configure task x {
+	    implementation "file://ioweorijoj";
+	  }
+	}
+  }
+}
+
+workflow A {
+}
+
+
+
+workflow AutoML {
+  define task preprocessing;
+  define ...
+}
+
+workflow IDEKO from TimeSeriesAutoML {
+
+}
+
+workflow TimeSeriesAutoML from AutoML {
+
+}

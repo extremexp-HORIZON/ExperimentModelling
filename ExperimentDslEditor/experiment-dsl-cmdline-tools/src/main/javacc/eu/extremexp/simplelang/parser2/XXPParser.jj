@@ -1,0 +1,288 @@
+options {
+    STATIC = false;
+    DEBUG_PARSER = true;
+    //DEBUG_LOOKAHEAD = true;
+    //FORCE_LA_CHECK = true;
+}
+
+PARSER_BEGIN(XXPParser)
+package eu.extremexp.simplelang.parser2;
+
+import java.io.InputStream;
+import java.io.BufferedInputStream;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.util.ArrayList;import java.util.Map;
+import java.util.List;
+
+import eu.extremexp.simplelang.elements.*;
+import eu.extremexp.simplelang.parser2.util.*;
+
+public class XXPParser {
+
+    private static TokenMgrError createError(String msg, int line, int col) {
+        String sb = msg + " Error at Line " + line +
+                ", Column " + col;
+                return new TokenMgrError(sb, TokenMgrError.LEXICAL_ERROR);
+    }
+
+    private static TokenMgrError createError(String msg, int line) {
+            String sb = msg + " Error at Line " + line;
+                    return new TokenMgrError(sb, TokenMgrError.LEXICAL_ERROR);
+    }
+
+    public static Workflow parse(java.io.InputStream is) throws ParseException {
+        XXPParser parser = new XXPParser(is);
+        Workflow workflow = parser.Graph();
+        return workflow;
+    }
+}
+PARSER_END(XXPParser)
+
+TOKEN : /* Keywords */
+{
+  < WORKFLOW: "workflow" >
+| < GROUP: "group" >
+| < TASK: "task" >
+| < DEFINE: "define" >
+| < CONFIGURE: "configure" >
+| < DATA: "data" >
+| < PACKAGE: "package" >
+| < IMPLEMENTATION: "implementation" >
+| < PARAM: "param" >
+| < CONDITION: "condition" >
+| < SCHEMA: "schema" >
+}
+
+TOKEN : /* edges */
+{
+  <PLAIN_EDGE: "->">
+| <DATA_EDGE: "-->">
+| <CONDITIONAL_EDGE: "?->" >
+| <EXCEPTIONAL_EDGE: "!->" >
+}
+
+TOKEN :
+{
+  < DOT: "." >
+}
+
+TOKEN : /* Identifier */
+{
+  < ID: < LETTER > (< LETTER > | < DIGIT >)* >
+}
+
+TOKEN : /* Literal */
+{
+  < #LETTER: ["a"-"z", "A"-"Z", "_"] >
+| < #DIGIT: ["0"-"9"] >
+| < STRING_LITERAL: "\"" (~["\""])* "\"" >
+| < NUMBER_LITERAL:  ("-")?(<DIGIT>)*"."(<DIGIT>)+
+                    | ("-")?(<DIGIT>)+
+                    | "."(<DIGIT>)+ >
+}
+
+<*> SKIP : /* Whitespace */
+{
+  " "
+| "\t"
+| "\n"
+| "\r"
+| <"//" (~["\n","\r"])* ("\n"|"\r"|"\r\n") >
+| <"/*" (~["*"] | "*" ~["/"])* "*/">
+}
+
+Workflow Graph() :
+{
+  Token id, pid;
+  List<Element> elements = null;
+  List<Pair<String, Value>> attrList = new ArrayList<>();
+}
+{
+     <PACKAGE> pid = <ID> ";"
+     <WORKFLOW> id = <ID> "{" [ elements = StmtList() ] "}" {
+          return new Workflow(pid.image, id.image, elements, attrList);
+      }
+}
+
+List<Element> StmtList() :
+{
+    Element element;
+    List<Element> ret = new ArrayList<>();
+}
+{
+    ( element = Stmt() { ret.add(element); } )+ { return ret; }
+}
+
+Element Stmt() :
+{
+    Element element;
+}
+{
+      LOOKAHEAD(3)
+      element = NodeStmt() {return element;}
+    | element = Group() {return element;}
+    | LOOKAHEAD(3)
+      element = EdgeStmt() {return element;}
+
+}
+
+Node NodeStmt() :
+{
+  String id;
+  //List<Pair<String, Value>> list = new ArrayList<>();
+  List<ConfigElement> cList = new ArrayList<>();
+}
+{
+      LOOKAHEAD(3)
+      <DEFINE> <DATA> id = NodeId() ( cList = ConfigList() | ";") { return new Node(id, true, cList); }
+    | <CONFIGURE> <TASK> id = NodeId() cList = ConfigList() {return Node.IGNORED; }
+    | LOOKAHEAD(3)
+      <DEFINE> <TASK> id = NodeId() ";" { return new Node(id, false, cList); }
+}
+
+Element EdgeStmt() :
+{
+  String node1;
+  List<Pair<EdgeKind, String>> rhs;
+  //List<Pair<String, Value>> attributes = null;
+  List<ConfigElement> cList = new ArrayList<>();
+}
+{
+    node1 = NodeId() rhs = EdgeRHS() ( cList = ConfigList() | ";") {
+        EdgeKind firstKind = rhs.getFirst().key;
+        for (var v: rhs) {
+            if (v.key != firstKind) {
+                Token currentToken = getToken(0);
+                throw createError("", currentToken.beginLine);
+            }
+        }
+        List<String> nodes = new ArrayList<>();
+        nodes.add(node1);
+        for (var v: rhs) {
+            nodes.add(v.value);
+        }
+        return firstKind.create(nodes, cList);
+    }
+}
+
+List<Pair<EdgeKind, String>> EdgeRHS() :
+{
+  EdgeKind edgeKind;
+  String node;
+  List<Pair<EdgeKind, String>> list = new ArrayList<>();
+}
+{
+    ( edgeKind = EdgeOp() node = NodeId() {list.add(new Pair<>(edgeKind, node));} )+ {return list;}
+}
+
+Group Group() :
+{
+    List<Element> elements;
+    Token id;
+}
+{
+    <GROUP> id = <ID> "{" elements = GroupContent() "}" { return new Group(id.image, elements); }
+}
+
+List<Element> GroupContent():
+{
+   List<Element> elements = new ArrayList<>();
+   Token id;
+}
+{
+  ( id = <ID> ";" { elements.add(new Node(id.image, false, new ArrayList<>())); } )+ { return elements; }
+}
+
+List<Pair<String, Value>> AttrList() :
+{
+  List<Pair<String, Value>> list = new ArrayList<>();
+  Token key;
+  Value value;
+}
+{
+    "{" ( key = <ID>  value = AttrValue() {Pair<String, Value> pair = new Pair<>(key.image, value); list.add(pair);}
+        ";") + "}" { return list; }
+}
+
+List<ConfigElement> ConfigList():
+{
+  List<ConfigElement> list = new ArrayList<>();
+  Token element;
+  Value value = null;
+}
+{
+  "{" ((
+         <IMPLEMENTATION> ( element = <ID> | element = <STRING_LITERAL> ) { list.add(ConfigElement.createImplementation(element.image)); }
+      |  <CONDITION> element = <STRING_LITERAL> { list.add(ConfigElement.createCondition(element.image)); }
+      |  <SCHEMA> element = <STRING_LITERAL> { list.add(ConfigElement.createSchema(element.image)); }
+      |  <PARAM> element = <ID> [ "=" value = AttrValue() ] { list.add(ConfigElement.createParam(element.image, value)); }
+  )";" )+ "}" { return list; }
+}
+
+Value AttrValue() :
+{ Token val;
+  List<String> vector;
+}
+{
+   val = <ID> { return new ScalarValue(val.image); }
+   | val = <STRING_LITERAL> { return new ScalarValue(val.image.substring(1, val.image.length()-1)); }
+   | val = <NUMBER_LITERAL> { return new ScalarValue(val.image); }
+   | vector = ValueList() { return new VectorValue(vector); }
+}
+
+List<String> ValueList() :
+{
+  List<String> list = new ArrayList<>();
+  String val1 = null;
+  String val2 = null;
+}
+{
+    "{" val1 = SimpleValue() { list.add(val1);} ("," val2 = SimpleValue() {list.add(val2);} )* "}" {
+            return list;
+     }
+}
+
+String SimpleValue() :
+{
+  Token value;
+  Token value2;
+}
+{
+   LOOKAHEAD(3) value = <ID> ":" value2 = <NUMBER_LITERAL> { return value.image + ":" + value2.image; }
+   | LOOKAHEAD(3) value = <ID> ":" value2 = <ID> { return value.image + ":" + value2.image; }
+   | value = <NUMBER_LITERAL> { return value.image; }
+   | value = <ID> { return value.image; }
+}
+
+String NodeId() :
+{ Token id; }
+{
+    id = <ID> { return id.image; }
+}
+
+EdgeKind EdgeOp() :
+{ EdgeKind edge; }
+{
+    edge = RegularEdgeOp() { return edge; }
+    | edge = DataEdgeOp() { return edge; }
+    | edge = ConditionalEdgeOp() { return edge; }
+}
+
+EdgeKind RegularEdgeOp() :
+{}
+{
+    <PLAIN_EDGE> { return EdgeKind.REGULAR; }
+}
+
+EdgeKind DataEdgeOp() :
+{}
+{
+    <DATA_EDGE> { return EdgeKind.DATA; }
+}
+
+EdgeKind ConditionalEdgeOp() :
+{}
+{
+    <CONDITIONAL_EDGE> { return EdgeKind.CONDITIONAL; }
+}

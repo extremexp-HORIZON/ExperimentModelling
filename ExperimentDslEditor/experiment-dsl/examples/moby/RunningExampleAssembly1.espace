@@ -1,0 +1,71 @@
+// A proposal for an experiment space definition.
+// This skeleton is automatically generated from the particular assembly by a tool.
+// In the "configure SELF" section, the search method is defined 
+// and then used for setting parameters' values.
+
+espace RunningExampleExpSpace of RunningExampleAssembly1 {
+
+  configure SELF {
+    define method object M as gridsearch; // randomsearch, bayesianoptimization,...
+    M["samplingFrequency"] = m.values(1, 5, 10);
+    M["period"] = m.values(1, 5, 10);
+  }
+
+  task SensorReading {
+    param samplingFrequency = M["samplingFrequency"]
+    param timeToStopCollectingData = 200;
+
+  }
+  task TripDetection {
+
+  }
+  task TripDetectionUserValidation {
+
+  }
+  task ModeDetection {
+
+  }
+  task ModeDetectionUserValidation {
+
+  }
+  task ActivityDetection {
+
+  }
+  task ActivityDetectionUserValidation {
+
+  }
+  
+  task ModeDetectionClassifierTraining {
+    param period = M["period"]
+    
+    task DataPreprocessing {
+
+    }
+    task Labeling {
+
+    }
+    task FeatureExtraction {
+
+    }
+    task ModelTrainingAndEvaluation {
+
+    }
+  }
+  
+  task ActivityDetectionClassifierTraining {
+    param period = M["period"]
+    
+    task DataPreprocessing {
+
+    }
+    task Labeling {
+
+    }
+    task FeatureExtraction {
+
+    }
+    task ModelTrainingAndEvaluation {
+
+    }
+  }
+}

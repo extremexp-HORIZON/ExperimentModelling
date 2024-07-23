@@ -1,0 +1,69 @@
+package moby;
+
+workflow ModeDetectionClassifierTrainingImpl {
+  param period;
+  
+  define task DataPreprocessing;
+  define task Labeling;
+  define task FeatureExtraction;
+  define task ModelTrainingAndEvaluation;
+
+
+  define data TripData { // note for use - this the same data type as in the "top-level" workflow
+                         // here it serves input data
+    schema "file://trip-data.schema";
+    // startTime,endTime,segments
+  }
+
+  define data PreprocessedTripData {
+    schema "file://preprocessed-trip-data.schema";
+  }
+
+  define data LabeledTripData {
+    schema "file://labeled-trip-data.schema";
+  }
+
+  define data FeaturesData {
+    schema "file://features.schema";
+  }
+
+  define data MLModelMode { // note for use - this the same data type as in the "top-level" workflow
+                            // here it serves as output data
+    schema "file://ml-model-mode.schema";
+  }
+
+  configure task DataPreprocessing {
+    implementation "file://......";
+  }
+
+  configure task Labeling {
+    implementation "file://......";
+  }
+
+  configure task FeatureExtraction {
+    implementation "file://......";
+  }
+
+  configure task ModelTrainingAndEvaluation {
+    implementation "file://......";
+  }
+
+  START -> DataPreprocessing -> Labeling -> FeatureExtraction -> ModelTrainingAndEvaluation
+  ModelTrainingAndEvaluation ?-> END {
+    condition = "resulting model is OK";
+  }
+
+  ModelTrainingAndEvaluation ?-> ModelTrainingAndEvaluation {
+    condition = "more training is needed";
+  }
+
+  ModelTrainingAndEvaluation ?-> FeatureExtraction {
+    condition = "new features are needed";
+  }
+
+  // input data
+  TripData --> DataPreprocessing;
+  DataPreprocessing --> PreprocessedTripData --> Labeling --> LabeledTripData --> FeatureExtraction --> FeaturesData --> ModelTrainingAndEvaluation;
+                                 // output data
+  ModelTrainingAndEvaluation --> MLModelMode
+}

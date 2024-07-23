@@ -1,0 +1,107 @@
+package ideko;
+
+workflow BinaryClassificationModel {
+
+  // TASKS
+
+  define task ReadData;
+  define task AddPadding;
+  define task SplitData;
+
+  define task NN;
+  define task CNN;
+  define task RNN;
+  define task LSTM;
+
+  // TASK CONFIGURATION
+
+  configure task NN {
+    implementation NNTrainingAndEvaluation;
+  }
+  configure task CNN {
+    implementation CNNTrainingAndEvaluation;
+  }
+  configure task RNN {
+    implementation RNNTrainingAndEvaluation;
+  }
+  configure task CNN {
+    implementation LSTMTrainingAndEvaluation;
+  }
+
+  // DATA
+
+  define data RawData;
+  define data PaddedData;
+  define data TrainingData;
+  define data TestData;
+
+  // TASK CONNECTIONS
+
+  START -> ReadData -> AddPadding -> SplitData;
+  
+  SplitData ?-> NN {
+    condition "NN enabled";
+  }
+  SplitData ?-> CNN {
+    condition "CNN enabled";
+  }
+  SplitData ?-> RNN {
+    condition "RNN enabled";
+  }
+  SplitData ?-> LSTM {
+    condition "LSTM enabled";
+  }
+
+  NN -> END;
+  CNN -> END;
+  RNN -> END;
+  LSTM -> END;
+
+  // DATA CONNECTIONS
+
+  ReadData --> RawData --> AddPadding --> PaddedData --> SplitData;
+  SplitData --> TrainingData;
+  SplitData --> TestData;
+
+  TrainingData --> NN;
+  TestData --> NN;
+  TrainingData --> CNN;
+  TestData --> CNN;
+  TrainingData --> RNN;
+  TestData --> RNN;
+  TrainingData --> LSTM;
+  TestData --> LSTM;
+}
+
+workflow NNTrainingAndEvaluation {
+
+  // TASKS
+
+  define task CreateModel;
+  define task CompileModel;
+  define task FitModel; // training
+  define task EvaluateModel;
+
+  // DATA
+
+  define data TrainingData;
+  define data TestData;
+  define data CreatedMLModel;
+  define data CompiledMLModel;
+  define data FittedMLModel;
+
+  // TASK CONNECTIONS
+
+  START -> CreateModel -> CompileModel -> FitModel -> EvaluateModel -> END;
+
+  // DATA CONNECTIONS
+
+  CreatedMLModel --> CreatedMLModel --> CompileModel --> CompiledMLModel --> FitModel --> FittedMLModel --> EvaluateModel;
+
+  TrainingData --> FitModel;
+
+  TrainingData --> EvaluateModel;
+  TestData --> EvaluateModel;
+}
+
+// workflows CNNTrainingAndEvaluation, RNNTrainingAndEvaluation, LSTMTrainingAndEvaluation are identical to NNTrainingAndEvaluation (with slightly different configuration parameters for the model)

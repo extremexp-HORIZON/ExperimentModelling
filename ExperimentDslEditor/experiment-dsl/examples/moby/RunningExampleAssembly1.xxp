@@ -1,0 +1,11 @@
+package moby;
+
+workflow RunningExampleAssembly1 from RunningExample {
+  configure task ModeDetectionClassifierTraining {
+    implementation ModeDetectionClassifierTrainingImpl;
+  }
+
+  configure task ActivityDetectionClassifierTraining {
+    implementation ActivityDetectionClassifierTrainingImpl;
+  }
+}

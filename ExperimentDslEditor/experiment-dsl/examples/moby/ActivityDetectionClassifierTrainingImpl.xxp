@@ -1,0 +1,5 @@
+package moby;
+
+workflow ActivityDetectionClassifierTrainingImpl {
+   // TODO the same structure as ModeDetectionClassifierTraining
+}

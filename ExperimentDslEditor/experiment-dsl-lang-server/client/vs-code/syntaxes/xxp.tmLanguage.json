@@ -1,0 +1,84 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "xxp",
+	"patterns": [
+		{
+			"include": "#entities"
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#sl-comments"
+		},
+		{
+			"include": "#ml-comments"
+		},
+		{
+			"include": "#constants"
+		}
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.xxp",
+				"match": "\\b(implementation|define|configure|from|condition|exception|schema|generates|as)\\b"
+			},
+			{
+				"name": "keyword.operator.xxp",
+				"match": "\\b(--\\>|-\\>|\\?-\\>)\\b"
+			}]
+		},
+		"entities": {
+			"patterns": [{
+				"name": "entity.name.function.xxp",
+				"match": "\\b(workflow|task|package)\\b"
+			},
+			{
+				"name": "entity.name.type.xxp",
+				"match": "\\b(data|param|metric)\\b"
+			},
+			{
+				"name":  "entity.name.tag.xxp",
+				"match": "\\b(PARALLEL|EXCLUSIVE|INCLUSIVE|COMPLEX)-(END-)?[0-9]+\\b"
+			}]
+		},		
+		"sl-comments": {
+			"name": "comment.line.double-slash.xxp",
+			"begin": "//",
+			"end":"\n"
+		},
+		"ml-comments": {
+			"name": "comment.block.xxp",
+			"begin": "/\\*",
+			"end": "\\*/"
+		},
+		"constants": {
+			"patterns": [
+				{
+					"name":  "constant.numeric.xxp",
+					"match": "\\b(-)?[0-9]+\\b"
+				},
+				{
+					"name":  "constant.language.xxp",
+					"match": "\\b(START|END|blob|primitive|structure|field|series)\\b"
+				}
+			]
+		},
+		"strings": {
+			"name": "string.quoted.double.xxp",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.xxp",
+					"match": "\\\\."
+				}
+			]
+		}
+	},
+	"scopeName": "source.xxp"
+}

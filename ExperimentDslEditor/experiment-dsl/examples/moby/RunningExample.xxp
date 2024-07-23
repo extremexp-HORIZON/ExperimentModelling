@@ -1,0 +1,157 @@
+package moby;
+
+workflow RunningExample {
+
+  define task SensorReading;
+  define task TripDetection;
+  define task TripDetectionUserValidation;
+  define task ModeDetection;
+  define task ModeDetectionUserValidation;
+  define task ActivityDetection;
+  define task ActivityDetectionUserValidation;
+  define task ModeDetectionClassifierTraining;
+  define task ActivityDetectionClassifierTraining;
+
+  configure task SensorReading {
+    param samplingFrequency;
+    param timeToStopCollectingData;
+    implementation "file://sensor-reading.exe";
+  }
+
+  configure task TripDetection {
+    implementation "file://trip-detection.exe";
+  }
+
+  configure task TripDetectionUserValidation {
+    implementation "file://trip-detection-user-validation.exe";
+  }
+
+  configure task ModeDetection {
+    implementation "file://mode-detection.exe";
+  }
+
+  configure task ModeDetectionUserValidation {
+    implementation "file://mode-detection-user-validation.exe";
+  }
+
+  configure task ActivityDetection {
+    implementation "file://activity-detection.exe";
+  }
+
+  configure task ActivityDetectionUserValidation {
+    implementation "file://activity-detection-user-validation.exe";
+  }
+
+  configure task ModeDetectionClassifierTraining {
+      param period;
+      // no implementation, i.e., it is abstract
+      // or put here "implementation name_of_workflow"
+  }
+
+  configure task ActivityDetectionClassifierTraining {
+      param period;
+      // no implementation, i.e., it is abstract
+      // or put here "implementation name_of_workflow"
+  }
+
+  START -> SensorReading -> TripDetection;
+
+  define data SensorData {
+    schema "file://sensor-data.schema";
+    // or define explicitly ... longitude,latitude,altitude,timestamp,speed,batteryLevel,isMoving,batteryCharging,heading
+  }
+
+  SensorReading --> SensorData;
+
+  SensorData --> TripDetection;
+
+  TripDetection ?-> SensorReading {
+    condition "not exists tripData";
+  }
+  TripDetection ?-> PARALLEL_1 {
+    condition "exists tripData";
+  }
+
+  define data TripData {
+    schema "file://trip-data.schema";
+    // startTime,endTime,segments
+  }
+
+  TripDetection --> TripData;
+  TripData --> TripDetectionUserValidation;
+  TripData --> ModeDetection;
+  TripData --> ModeDetectionClassifierTraining;
+
+
+  PARALLEL_1 -> EXCLUSIVE_1;
+  PARALLEL_1 -> ModeDetectionClassifierTraining;
+  PARALLEL_1 -> ActivityDetectionClassifierTraining;
+  EXCLUSIVE_1 -> TripDetectionUserValidation;
+  TripDetectionUserValidation -> EXCLUSIVE_END_1;
+  EXCLUSIVE_1 -> EXCLUSIVE_END_1 {
+    condition "validation not needed";
+  }
+
+  define data ModeData {
+    schema "file://mode-data.schema";
+    // mode
+  }
+
+  EXCLUSIVE_END_1 -> ModeDetection -> EXCLUSIVE_2;
+  ModeDetection --> ModeData;
+
+  ModeData --> ActivityDetection;
+  ModeData --> ModeDetectionUserValidation;
+  ModeData --> ActivityDetectionClassifierTraining;
+
+  EXCLUSIVE_2 -> ModeDetectionUserValidation -> EXCLUSIVE_END_2;
+  EXCLUSIVE_2 -> EXCLUSIVE_END_2 {
+    condition "validation not needed";
+  }
+
+  define data ActivityData {
+    schema "file://activity-data.schema";
+    // activity
+  }
+
+  EXCLUSIVE_END_2 -> ActivityDetection -> EXCLUSIVE_3;
+  ActivityDetection --> ActivityData;
+
+  ActivityData --> ActivityDetectionUserValidation;
+
+  EXCLUSIVE_3 -> ActivityDetectionUserValidation -> EXCLUSIVE_END_3;
+  EXCLUSIVE_3 -> EXCLUSIVE_END_3 {
+    condition "validation not needed";
+  }
+
+  EXCLUSIVE_END_3 -> PARALLEL_END_1;
+
+  group UserPerformed {
+    TripDetectionUserValidation;
+    ModeDetectionUserValidation;
+    ActivityDetectionUserValidation;
+  }
+
+  ModeDetectionClassifierTraining ?-> ModeDetectionClassifierTraining {
+    condition "retrain needed";
+  }
+  ModeDetectionClassifierTraining -> PARALLEL_END_1;
+  define data MLModelMode {
+    schema "file://ml-model-mode.schema";
+  }
+  ModeDetectionClassifierTraining --> MLModelMode;
+  MLModelMode --> ModeDetection;
+
+  ActivityDetectionClassifierTraining ?-> ActivityDetectionClassifierTraining {
+    condition "retrain needed";
+  }
+  ActivityDetectionClassifierTraining -> PARALLEL_END_1;
+  define data MLModelActivity {
+    schema "file://ml-model-activity.schema";
+  }
+  ActivityDetectionClassifierTraining --> MLModelActivity;
+  MLModelActivity --> ActivityDetection;
+
+  PARALLEL_END_1 -> END;
+}
+
